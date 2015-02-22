@@ -1,0 +1,90 @@
+---
+title: "Practical Machine Learning"
+author: "Marco Bonifazi"
+date: "22 February 2015"
+output: html_document
+---
+
+### Loading all the libraries and data required
+First of all we load the files required
+
+```{r, echo=TRUE, results='hide'}
+library(RCurl)
+library(caret)
+library(randomForest)
+setwd("./")
+#training_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+#download.file(training_url, destfile = "./pml-training.csv", method="curl")
+train_table <- read.csv("./pml-training.csv")
+
+#testing_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+#download.file(testing_url, destfile = "./pml-testing.csv", method="curl")
+test_table <- read.csv("./pml-testing.csv")
+```
+
+### Preprocessing based on column names
+It is possible to see that there are many columns which are providing values related to accelerometers and acceleration.
+I only consider values taken at the end of the window, as they represent a specific period of time and then simplify our modeling.
+
+I then shrink my train and test sets to consider only the columns with meaningful values and we use the fact that some columns are not available in the original testing set to remove them from our data sets
+
+```{r, echo=TRUE, results='hide'}
+valaccel <- grep("accel|gyro|magnet|roll|pitch|yaw", colnames(train_table), value=TRUE)
+var_names <- grep("var_|min_|max_|avg_|kurtosis_|skewness_|amplitude_|stddev_", valaccel, value=TRUE)
+valaccel <- setdiff(valaccel, var_names)
+
+data <- subset(train_table, select=c(valaccel, "classe"))
+```
+
+### Cross validation with two partitions of the original training set
+We divide the original training data set in two different sets for our model: a training set and a testing set to have cross-validation with random subsampling and no replacement.
+
+```{r, echo=TRUE}
+samples <- createDataPartition(y=data$classe, p=0.75, list=FALSE)
+train_data <- data[samples,]
+test_data <- data[-samples,]
+```
+
+
+### Feature selection
+It is important to double check if the features we have selected have any kind of correlation among themselves.
+
+Showing a pairs plot is quite hard as there are too many features, but we can calculate the correlation among them and discard the features with high correlation.
+
+```{r, echo=TRUE}
+cors <- cor(train_data[, -ncol(train_data)])
+diag(cors) <- 0
+cors[upper.tri(cors)] <-0
+indices <- which(cors > 0.7, arr.ind=T)
+indices
+```
+
+We then remove the features which have high correlation
+```{r, echo=TRUE}
+to_remove <- rownames(indices)
+new_train_data_col_names <- setdiff(colnames(train_data), to_remove)
+train_data <- train_data[, new_train_data_col_names]
+
+new_test_data_col_names <- setdiff(colnames(test_data), to_remove)
+test_data <- test_data[, new_test_data_col_names]
+```
+
+### Training the model with the Random Forest method
+
+Now we train our data using Random Forest method and we print the model
+
+```{r, echo=TRUE}
+model <- randomForest(classe ~., data=train_data)
+print(model)
+```
+We can then see that the **estimated out of sample error** is **0.5%**.
+
+We compare the estimated out of sample error rate with the actual rate, just predicting the results of the testing set using the model just obtained
+```{r, echo=TRUE}
+test_result <- predict(model, test_data)
+cm <- confusionMatrix(test_data$classe, test_result)
+cm
+```
+
+We can clearly see that, given the accuracy of `r cm$overall["Accuracy"]`, the **out of sample error** is **`r 1 - cm$overall["Accuracy"]`**
+
