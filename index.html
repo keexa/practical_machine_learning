@@ -95,8 +95,6 @@ data &lt;- subset(train_table, select=c(valaccel, &quot;classe&quot;))</code></p
 <pre class="r"><code>samples &lt;- createDataPartition(y=data$classe, p=0.75, list=FALSE)
 train_data &lt;- data[samples,]
 test_data &lt;- data[-samples,]</code></pre>
-<pre class="r"><code>my_test_data &lt;- subset(test_table, select=valaccel)
-my_test_data &lt;- subset(test_table, select=valaccel)</code></pre>
 </div>
 <div id="feature-selection" class="section level3">
 <h3>Feature selection</h3>
@@ -106,30 +104,14 @@ my_test_data &lt;- subset(test_table, select=valaccel)</code></pre>
 diag(cors) &lt;- 0
 cors[upper.tri(cors)] &lt;-0
 indices &lt;- which(cors &gt; 0.7, arr.ind=T)
-indices</code></pre>
-<pre><code>##                   row col
-## yaw_belt            3   1
-## total_accel_belt    4   1
-## accel_belt_y        9   1
-## total_accel_belt    4   3
-## accel_belt_x        8   3
-## magnet_belt_x      11   3
-## accel_belt_y        9   4
-## magnet_dumbbell_y  38   5
-## magnet_belt_x      11   8
-## accel_arm_y        22  10
-## magnet_belt_z      13  12
-## magnet_arm_x       24  21
-## magnet_arm_z       26  23
-## magnet_arm_z       26  25
-## accel_dumbbell_y   35  27
-## accel_dumbbell_x   34  28
-## accel_dumbbell_z   36  29
-## accel_dumbbell_y   35  30
-## gyros_forearm_y    45  33
-## gyros_forearm_z    46  33
-## gyros_forearm_z    46  45
-## magnet_forearm_y   51  48</code></pre>
+rownames(indices)</code></pre>
+<pre><code>##  [1] &quot;yaw_belt&quot;          &quot;total_accel_belt&quot;  &quot;accel_belt_y&quot;     
+##  [4] &quot;total_accel_belt&quot;  &quot;accel_belt_x&quot;      &quot;magnet_belt_x&quot;    
+##  [7] &quot;accel_belt_y&quot;      &quot;magnet_dumbbell_y&quot; &quot;magnet_belt_x&quot;    
+## [10] &quot;accel_arm_y&quot;       &quot;magnet_belt_z&quot;     &quot;magnet_arm_x&quot;     
+## [13] &quot;magnet_arm_z&quot;      &quot;magnet_arm_z&quot;      &quot;accel_dumbbell_y&quot; 
+## [16] &quot;accel_dumbbell_x&quot;  &quot;accel_dumbbell_z&quot;  &quot;accel_dumbbell_y&quot; 
+## [19] &quot;gyros_forearm_z&quot;   &quot;magnet_forearm_y&quot;</code></pre>
 <p>We then remove the features which have high correlation</p>
 <pre class="r"><code>to_remove &lt;- rownames(indices)
 new_train_data_col_names &lt;- setdiff(colnames(train_data), to_remove)
@@ -150,14 +132,14 @@ print(model)</code></pre>
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 6
 ## 
-##         OOB estimate of  error rate: 0.65%
+##         OOB estimate of  error rate: 0.53%
 ## Confusion matrix:
 ##      A    B    C    D    E  class.error
-## A 4181    3    1    0    0 0.0009557945
-## B   13 2824   11    0    0 0.0084269663
-## C    0   17 2546    4    0 0.0081807557
-## D    0    0   34 2376    2 0.0149253731
-## E    0    0    1    9 2696 0.0036954915</code></pre>
+## A 4181    4    0    0    0 0.0009557945
+## B   10 2833    5    0    0 0.0052668539
+## C    0   12 2549    6    0 0.0070120764
+## D    0    0   30 2380    2 0.0132669983
+## E    0    0    3    6 2697 0.0033259424</code></pre>
 <p>We can then see that the <strong>estimated out of sample error</strong> is <strong>0.5%</strong>.</p>
 <p>We compare the estimated out of sample error rate with the actual rate, just predicting the results of the testing set using the model just obtained</p>
 <pre class="r"><code>test_result &lt;- predict(model, test_data)
@@ -167,34 +149,43 @@ cm</code></pre>
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 1391    4    0    0    0
-##          B    3  944    2    0    0
-##          C    0    2  848    5    0
-##          D    0    0   13  791    0
-##          E    0    0    2    3  896
+##          A 1388    7    0    0    0
+##          B    6  943    0    0    0
+##          C    0    5  850    0    0
+##          D    0    0   11  793    0
+##          E    0    0    0    2  899
 ## 
 ## Overall Statistics
-##                                           
-##                Accuracy : 0.9931          
-##                  95% CI : (0.9903, 0.9952)
-##     No Information Rate : 0.2843          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.9912          
-##  Mcnemar's Test P-Value : NA              
+##                                          
+##                Accuracy : 0.9937         
+##                  95% CI : (0.991, 0.9957)
+##     No Information Rate : 0.2843         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.992          
+##  Mcnemar's Test P-Value : NA             
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9978   0.9937   0.9803   0.9900   1.0000
-## Specificity            0.9989   0.9987   0.9983   0.9968   0.9988
-## Pos Pred Value         0.9971   0.9947   0.9918   0.9838   0.9945
-## Neg Pred Value         0.9991   0.9985   0.9958   0.9980   1.0000
-## Prevalence             0.2843   0.1937   0.1764   0.1629   0.1827
-## Detection Rate         0.2836   0.1925   0.1729   0.1613   0.1827
+## Sensitivity            0.9957   0.9874   0.9872   0.9975   1.0000
+## Specificity            0.9980   0.9985   0.9988   0.9973   0.9995
+## Pos Pred Value         0.9950   0.9937   0.9942   0.9863   0.9978
+## Neg Pred Value         0.9983   0.9970   0.9973   0.9995   1.0000
+## Prevalence             0.2843   0.1947   0.1756   0.1621   0.1833
+## Detection Rate         0.2830   0.1923   0.1733   0.1617   0.1833
 ## Detection Prevalence   0.2845   0.1935   0.1743   0.1639   0.1837
-## Balanced Accuracy      0.9984   0.9962   0.9893   0.9934   0.9994</code></pre>
-<p>We can clearly see that, given the accuracy of 0.9930669, the <strong>out of sample error</strong> is <strong>0.0069331</strong></p>
+## Balanced Accuracy      0.9969   0.9930   0.9930   0.9974   0.9998</code></pre>
+<p>We can clearly see that, given the accuracy of 0.9936786, the <strong>out of sample error</strong> is <strong>0.0063214</strong></p>
+<p>Here is a nice table where we can compare the results of the predicted against the actual values of the testing set.</p>
+<pre class="r"><code>table(test_result, test_data$classe)</code></pre>
+<pre><code>##            
+## test_result    A    B    C    D    E
+##           A 1388    6    0    0    0
+##           B    7  943    5    0    0
+##           C    0    0  850   11    0
+##           D    0    0    0  793    2
+##           E    0    0    0    0  899</code></pre>
 </div>
 
 

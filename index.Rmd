@@ -45,6 +45,10 @@ train_data <- data[samples,]
 test_data <- data[-samples,]
 ```
 
+```{r, echo=FALSE}
+my_test_data <- subset(test_table, select=valaccel)
+my_test_data <- subset(test_table, select=valaccel)
+```
 
 ### Feature selection
 It is important to double check if the features we have selected have any kind of correlation among themselves.
@@ -56,7 +60,7 @@ cors <- cor(train_data[, -ncol(train_data)])
 diag(cors) <- 0
 cors[upper.tri(cors)] <-0
 indices <- which(cors > 0.7, arr.ind=T)
-indices
+rownames(indices)
 ```
 
 We then remove the features which have high correlation
@@ -88,3 +92,7 @@ cm
 
 We can clearly see that, given the accuracy of `r cm$overall["Accuracy"]`, the **out of sample error** is **`r 1 - cm$overall["Accuracy"]`**
 
+Here is a nice table where we can compare the results of the predicted against the actual values of the testing set.
+```{r, echo=TRUE}
+table(test_result, test_data$classe)
+```
