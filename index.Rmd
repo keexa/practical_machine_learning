@@ -23,14 +23,17 @@ test_table <- read.csv("./pml-testing.csv")
 ```
 
 ### Preprocessing based on column names
-It is possible to see that there are many columns which are providing values related to accelerometers and acceleration.
-I only consider values taken at the end of the window, as they represent a specific period of time and then simplify our modeling.
+It is possible to see that there are many columns which are providing values related to accelerometers.
 
-I then shrink my train and test sets to consider only the columns with meaningful values and we use the fact that some columns are not available in the original testing set to remove them from our data sets
+The columns of the sets have been reduced considering that the original testing set (pml-testing.csv) has many columns with values not provided. 
+
+It is clear that the columns which are a calculation on the other columns (average, max, min, etc) have to be removed as they represent only specific rows of the training set (the ones at the end of 150ms window).
+
 
 ```{r, echo=TRUE, results='hide'}
 valaccel <- grep("accel|gyro|magnet|roll|pitch|yaw", colnames(train_table), value=TRUE)
 var_names <- grep("var_|min_|max_|avg_|kurtosis_|skewness_|amplitude_|stddev_", valaccel, value=TRUE)
+# Discarding the not meaningful columns
 valaccel <- setdiff(valaccel, var_names)
 
 data <- subset(train_table, select=c(valaccel, "classe"))
@@ -39,7 +42,10 @@ data <- subset(train_table, select=c(valaccel, "classe"))
 ### Cross validation with two partitions of the original training set
 We divide the original training data set in two different sets for our model: a training set and a testing set to have cross-validation with random subsampling and no replacement.
 
+Only one round of cross-validation is performed for the sake of simplicity in this project, but it would be nice to have multiple round on several partitionings and then average them.
+
 ```{r, echo=TRUE}
+set.seed(121)
 samples <- createDataPartition(y=data$classe, p=0.75, list=FALSE)
 train_data <- data[samples,]
 test_data <- data[-samples,]
@@ -63,7 +69,7 @@ indices <- which(cors > 0.7, arr.ind=T)
 rownames(indices)
 ```
 
-We then remove the features which have high correlation
+We then remove from the training and test data the features which have high correlation
 ```{r, echo=TRUE}
 to_remove <- rownames(indices)
 new_train_data_col_names <- setdiff(colnames(train_data), to_remove)
@@ -81,7 +87,7 @@ Now we train our data using Random Forest method and we print the model
 model <- randomForest(classe ~., data=train_data)
 print(model)
 ```
-We can then see that the **estimated out of sample error** is **0.5%**.
+We can then see that the **estimated out of sample error** is around **0.5%**.
 
 We compare the estimated out of sample error rate with the actual rate, just predicting the results of the testing set using the model just obtained
 ```{r, echo=TRUE}

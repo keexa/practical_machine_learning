@@ -81,10 +81,12 @@ test_table &lt;- read.csv(&quot;./pml-testing.csv&quot;)</code></pre>
 </div>
 <div id="preprocessing-based-on-column-names" class="section level3">
 <h3>Preprocessing based on column names</h3>
-<p>It is possible to see that there are many columns which are providing values related to accelerometers and acceleration. I only consider values taken at the end of the window, as they represent a specific period of time and then simplify our modeling.</p>
-<p>I then shrink my train and test sets to consider only the columns with meaningful values and we use the fact that some columns are not available in the original testing set to remove them from our data sets</p>
+<p>It is possible to see that there are many columns which are providing values related to accelerometers.</p>
+<p>The columns of the sets have been reduced considering that the original testing set (pml-testing.csv) has many columns with values not provided.</p>
+<p>It is clear that the columns which are a calculation on the other columns (average, max, min, etc) have to be removed as they represent only specific rows of the training set (the ones at the end of 150ms window).</p>
 <pre class="r"><code>valaccel &lt;- grep(&quot;accel|gyro|magnet|roll|pitch|yaw&quot;, colnames(train_table), value=TRUE)
 var_names &lt;- grep(&quot;var_|min_|max_|avg_|kurtosis_|skewness_|amplitude_|stddev_&quot;, valaccel, value=TRUE)
+# Discarding the not meaningful columns
 valaccel &lt;- setdiff(valaccel, var_names)
 
 data &lt;- subset(train_table, select=c(valaccel, &quot;classe&quot;))</code></pre>
@@ -92,7 +94,9 @@ data &lt;- subset(train_table, select=c(valaccel, &quot;classe&quot;))</code></p
 <div id="cross-validation-with-two-partitions-of-the-original-training-set" class="section level3">
 <h3>Cross validation with two partitions of the original training set</h3>
 <p>We divide the original training data set in two different sets for our model: a training set and a testing set to have cross-validation with random subsampling and no replacement.</p>
-<pre class="r"><code>samples &lt;- createDataPartition(y=data$classe, p=0.75, list=FALSE)
+<p>Only one round of cross-validation is performed for the sake of simplicity in this project, but it would be nice to have multiple round on several partitionings and then average them.</p>
+<pre class="r"><code>set.seed(121)
+samples &lt;- createDataPartition(y=data$classe, p=0.75, list=FALSE)
 train_data &lt;- data[samples,]
 test_data &lt;- data[-samples,]</code></pre>
 </div>
@@ -111,8 +115,9 @@ rownames(indices)</code></pre>
 ## [10] &quot;accel_arm_y&quot;       &quot;magnet_belt_z&quot;     &quot;magnet_arm_x&quot;     
 ## [13] &quot;magnet_arm_z&quot;      &quot;magnet_arm_z&quot;      &quot;accel_dumbbell_y&quot; 
 ## [16] &quot;accel_dumbbell_x&quot;  &quot;accel_dumbbell_z&quot;  &quot;accel_dumbbell_y&quot; 
-## [19] &quot;gyros_forearm_z&quot;   &quot;magnet_forearm_y&quot;</code></pre>
-<p>We then remove the features which have high correlation</p>
+## [19] &quot;gyros_forearm_y&quot;   &quot;gyros_forearm_z&quot;   &quot;gyros_forearm_z&quot;  
+## [22] &quot;magnet_forearm_y&quot;</code></pre>
+<p>We then remove from the training and test data the features which have high correlation</p>
 <pre class="r"><code>to_remove &lt;- rownames(indices)
 new_train_data_col_names &lt;- setdiff(colnames(train_data), to_remove)
 train_data &lt;- train_data[, new_train_data_col_names]
@@ -132,15 +137,15 @@ print(model)</code></pre>
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 6
 ## 
-##         OOB estimate of  error rate: 0.53%
+##         OOB estimate of  error rate: 0.56%
 ## Confusion matrix:
 ##      A    B    C    D    E  class.error
-## A 4181    4    0    0    0 0.0009557945
-## B   10 2833    5    0    0 0.0052668539
-## C    0   12 2549    6    0 0.0070120764
-## D    0    0   30 2380    2 0.0132669983
-## E    0    0    3    6 2697 0.0033259424</code></pre>
-<p>We can then see that the <strong>estimated out of sample error</strong> is <strong>0.5%</strong>.</p>
+## A 4181    3    1    0    0 0.0009557945
+## B   12 2831    5    0    0 0.0059691011
+## C    0   13 2548    6    0 0.0074016362
+## D    0    0   35 2376    1 0.0149253731
+## E    0    0    1    5 2700 0.0022172949</code></pre>
+<p>We can then see that the <strong>estimated out of sample error</strong> is around <strong>0.5%</strong>.</p>
 <p>We compare the estimated out of sample error rate with the actual rate, just predicting the results of the testing set using the model just obtained</p>
 <pre class="r"><code>test_result &lt;- predict(model, test_data)
 cm &lt;- confusionMatrix(test_data$classe, test_result)
@@ -149,43 +154,43 @@ cm</code></pre>
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 1388    7    0    0    0
-##          B    6  943    0    0    0
+##          A 1395    0    0    0    0
+##          B    2  946    1    0    0
 ##          C    0    5  850    0    0
-##          D    0    0   11  793    0
-##          E    0    0    0    2  899
+##          D    0    0    6  795    3
+##          E    0    0    0    3  898
 ## 
 ## Overall Statistics
-##                                          
-##                Accuracy : 0.9937         
-##                  95% CI : (0.991, 0.9957)
-##     No Information Rate : 0.2843         
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
-##                                          
-##                   Kappa : 0.992          
-##  Mcnemar's Test P-Value : NA             
+##                                           
+##                Accuracy : 0.9959          
+##                  95% CI : (0.9937, 0.9975)
+##     No Information Rate : 0.2849          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9948          
+##  Mcnemar's Test P-Value : NA              
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9957   0.9874   0.9872   0.9975   1.0000
-## Specificity            0.9980   0.9985   0.9988   0.9973   0.9995
-## Pos Pred Value         0.9950   0.9937   0.9942   0.9863   0.9978
-## Neg Pred Value         0.9983   0.9970   0.9973   0.9995   1.0000
-## Prevalence             0.2843   0.1947   0.1756   0.1621   0.1833
-## Detection Rate         0.2830   0.1923   0.1733   0.1617   0.1833
+## Sensitivity            0.9986   0.9947   0.9918   0.9962   0.9967
+## Specificity            1.0000   0.9992   0.9988   0.9978   0.9993
+## Pos Pred Value         1.0000   0.9968   0.9942   0.9888   0.9967
+## Neg Pred Value         0.9994   0.9987   0.9983   0.9993   0.9993
+## Prevalence             0.2849   0.1939   0.1748   0.1627   0.1837
+## Detection Rate         0.2845   0.1929   0.1733   0.1621   0.1831
 ## Detection Prevalence   0.2845   0.1935   0.1743   0.1639   0.1837
-## Balanced Accuracy      0.9969   0.9930   0.9930   0.9974   0.9998</code></pre>
-<p>We can clearly see that, given the accuracy of 0.9936786, the <strong>out of sample error</strong> is <strong>0.0063214</strong></p>
+## Balanced Accuracy      0.9993   0.9970   0.9953   0.9970   0.9980</code></pre>
+<p>We can clearly see that, given the accuracy of 0.9959217, the <strong>out of sample error</strong> is <strong>0.0040783</strong></p>
 <p>Here is a nice table where we can compare the results of the predicted against the actual values of the testing set.</p>
 <pre class="r"><code>table(test_result, test_data$classe)</code></pre>
 <pre><code>##            
 ## test_result    A    B    C    D    E
-##           A 1388    6    0    0    0
-##           B    7  943    5    0    0
-##           C    0    0  850   11    0
-##           D    0    0    0  793    2
-##           E    0    0    0    0  899</code></pre>
+##           A 1395    2    0    0    0
+##           B    0  946    5    0    0
+##           C    0    1  850    6    0
+##           D    0    0    0  795    3
+##           E    0    0    0    3  898</code></pre>
 </div>
 
 
